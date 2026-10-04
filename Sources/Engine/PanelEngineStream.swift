@@ -109,19 +109,21 @@ extension PanelEngine {
 
                 // A rewrite style is one plain document meant to differ from
                 // the source: nothing to parse, and the paraphrase ceiling that
-                // protects proofreading would reject it on sight.
-                if !request.grammarStyle.isRewrite {
+                // protects proofreading would reject it on sight. Only its list
+                // shape is checked, as for Enhance.
+                do {
                     var decision = OutputQuality.evaluate(
                         actionID: request.actionID,
                         raw: final,
                         source: request.capturedText,
-                        canRetry: self.canQualityRetry(for: request.actionID)
+                        canRetry: self.canQualityRetry(for: request.actionID),
+                        isRewriteStyle: request.grammarStyle.isRewrite
                     )
                     // The parse hint names a tag contract the Apple on-device
                     // prompts deliberately do not have; there a retry is a
                     // plain regenerate.
                     if SettingsStore.shared.activeProvider == .apple,
-                       case .retry(let previous, let hint) = decision.outcome, hint != nil {
+                       case .retry(let previous, let hint) = decision.outcome, hint == OutputQuality.parseHint {
                         decision.outcome = .retry(previousResult: previous, hint: nil)
                     }
                     switch decision.outcome {

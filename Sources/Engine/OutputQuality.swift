@@ -1,8 +1,8 @@
 import Foundation
 
-/// Post-stream checks that keep Grammar honest. Prompts are a probability;
-/// Replace pastes into a real document, so the tag contract and
-/// Grammar-vs-paraphrase are enforced here.
+/// Post-stream checks. Prompts are a probability; Replace pastes into a real
+/// document, so Grammar's tag contract, Grammar-vs-paraphrase, and the
+/// author's list structure are enforced here.
 enum OutputQuality {
     /// Matches `PanelEngine.grammarParaphraseCeiling`. Corrections cluster
     /// near 0; the reported synonym-swap scored 1.0. 0.4 sits in the gap.
@@ -10,6 +10,10 @@ enum OutputQuality {
 
     static let parseHint = """
     Your previous output did not use the required tags. Output ONLY the tagged documents in the exact format specified in the system instructions, and nothing else.
+    """
+
+    static let listHint = """
+    Your previous output merged the author's points into running text. The source is written as a list: keep it as a list, one point per line, with the same markers (`-`, `*`, `1.`), order, and number of points. Improve and correct the words inside each point only.
     """
 
     enum Outcome: Equatable {
@@ -23,12 +27,40 @@ enum OutputQuality {
         var text: String
     }
 
-    /// Proofread Grammar only. Enhance and the rewrite styles publish as is.
-    static func evaluate(actionID: String, raw: String, source: String, canRetry: Bool) -> Decision {
-        guard actionID == EnhancementAction.grammarID else {
+    /// Proofread Grammar gets the full check. Enhance and the Grammar
+    /// rewrite styles change wording on purpose, so only their list shape is
+    /// checked.
+    static func evaluate(
+        actionID: String,
+        raw: String,
+        source: String,
+        canRetry: Bool,
+        isRewriteStyle: Bool = false
+    ) -> Decision {
+        if actionID == EnhancementAction.grammarID, !isRewriteStyle {
+            return evaluateGrammar(raw: raw, source: source, canRetry: canRetry)
+        }
+        return evaluateListShape(raw: raw, source: source, canRetry: canRetry)
+    }
+
+    // MARK: - List shape
+
+    /// A source written as points must come back as points. One retry with
+    /// `listHint`; if the model merges them again, rebuild the lines from the
+    /// source, keeping the repair only when every point came back.
+    private static func evaluateListShape(raw: String, source: String, canRetry: Bool) -> Decision {
+        let wanted = LineStructure.listItemCount(in: source)
+        guard wanted >= 2, LineStructure.listItemCount(in: raw) < 2 else {
             return Decision(outcome: .publish, text: raw)
         }
-        return evaluateGrammar(raw: raw, source: source, canRetry: canRetry)
+        if canRetry {
+            return Decision(outcome: .retry(previousResult: nil, hint: listHint), text: raw)
+        }
+        let repaired = restoringListMarkers(
+            source: source,
+            body: LineStructure.restoringLineBreaks(source: source, output: raw)
+        )
+        return Decision(outcome: .publish, text: LineStructure.listItemCount(in: repaired) >= wanted ? repaired : raw)
     }
 
     // MARK: - Grammar
@@ -40,9 +72,16 @@ enum OutputQuality {
         // they graft back exactly; anything that does not align 1:1 is left
         // alone. Runs before paraphrase scoring so the score sees the text
         // that will actually publish.
+        // Joined lines are split back first, so the marker graft below sees
+        // one line per source item.
         let corrected = (GrammarSuggestions.body(in: parsed.suggestions, matching: .corrected)
             ?? parsed.suggestions.first?.body)
-            .map { restoringListMarkers(source: source, body: $0) }
+            .map {
+                restoringListMarkers(
+                    source: source,
+                    body: LineStructure.restoringLineBreaks(source: source, output: $0)
+                )
+            }
         if parsed.usedFallback, canRetry, corrected != nil {
             return Decision(outcome: .retry(previousResult: nil, hint: parseHint), text: raw)
         }
