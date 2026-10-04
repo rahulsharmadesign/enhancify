@@ -25,8 +25,8 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.rahul.enhancify
-        MARKETING_VERSION: "2.0.0"
-        CURRENT_PROJECT_VERSION: "36"
+        MARKETING_VERSION: "2.0.1"
+        CURRENT_PROJECT_VERSION: "37"
         SWIFT_VERSION: "6.0"
         # Signed with the machine's Apple Development certificate, MANUALLY and
         # with no provisioning profile.

@@ -56,9 +56,19 @@ final class BuiltInPromptScopeTests: XCTestCase {
     }
 
     func testEnhanceFixesSpellingWithoutTouchingCode() {
-        XCTAssertTrue(Prompts.enhance.contains("Fix the author's spelling, grammar, and punctuation"))
-        XCTAssertTrue(Prompts.enhance.contains("Never alter code, identifiers"))
-        XCTAssertTrue(Prompts.enhanceOnDevice.contains("Fix spelling, grammar, and punctuation"))
+        XCTAssertTrue(Prompts.enhance.contains("Fix every spelling, grammar, punctuation, and capitalization error"))
+        XCTAssertTrue(Prompts.enhance.contains("never alter code, identifiers"))
+        XCTAssertTrue(Prompts.enhanceOnDevice.contains("Fix spelling, grammar, punctuation, and capitalization"))
+    }
+
+    func testEveryPromptKeepsPointsAsPoints() {
+        XCTAssertTrue(Prompts.enhance.contains("Never merge points into a paragraph"))
+        XCTAssertTrue(Prompts.enhanceOnDevice.contains("Never merge points into a paragraph"))
+        XCTAssertTrue(Prompts.grammar.contains("never join lines into one paragraph"))
+        XCTAssertTrue(Prompts.grammarOnDevice.contains("text on separate lines stays on separate lines"))
+        for style in GrammarStyle.allCases where style.isRewrite {
+            XCTAssertTrue(style.systemPrompt.contains("Never merge points"), "\(style)")
+        }
     }
 }
 
