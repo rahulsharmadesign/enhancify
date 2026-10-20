@@ -60,7 +60,14 @@ final class RichReplacementTests: XCTestCase {
             effectiveRange: nil
         ) as? NSParagraphStyle
         XCTAssertFalse(itemStyle?.textLists.isEmpty ?? true)
-        XCTAssertEqual(rebuilt.string.components(separatedBy: "•").count - 1, 2, "one marker per item")
+        // AppKit may keep the marker as text ("\t•\t") or only as list
+        // styling, depending on the OS; the result must match the source.
+        let sourceRead = try XCTUnwrap(NSAttributedString(rtf: rtf, documentAttributes: nil))
+        XCTAssertEqual(
+            rebuilt.string.components(separatedBy: "•").count,
+            sourceRead.string.components(separatedBy: "•").count,
+            "markers neither dropped nor doubled"
+        )
         XCTAssertFalse(rebuilt.string.contains("- Send"))
         let headingFont = try XCTUnwrap(rebuilt.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)
         XCTAssertEqual(headingFont.pointSize, 24)
