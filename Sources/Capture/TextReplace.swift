@@ -24,8 +24,18 @@ enum TextReplace {
     static func replaceSelection(
         with text: String,
         target: AXUIElement?,
-        hostBundleID: String? = nil
+        hostBundleID: String? = nil,
+        rich: RichReplacement.Payload? = nil
     ) async {
+        // Writing kAXSelectedText inserts plain text: formatting is dropped and
+        // browser editors collapse line breaks into one line. Formatted or
+        // multi-line results paste instead, where the host reads the richest
+        // type it understands.
+        guard rich == nil, !text.contains("\n") else {
+            logger.notice("multi-line or formatted result; pasting")
+            await replaceViaClipboard(with: text, target: target, hostBundleID: hostBundleID, rich: rich)
+            return
+        }
         if let target, !isElectronHelper(target), replaceViaAccessibility(with: text, element: target) {
             logger.notice("replaced via AX on captured target")
             return
@@ -102,9 +112,12 @@ enum TextReplace {
     private static func replaceViaClipboard(
         with text: String,
         target: AXUIElement?,
-        hostBundleID: String? = nil
+        hostBundleID: String? = nil,
+        rich: RichReplacement.Payload? = nil
     ) async {
-        activateHost(owning: target, bundleID: hostBundleID)
+        if let host = hostApplication(owning: target, bundleID: hostBundleID) {
+            await bringToFront(host)
+        }
         await KeySimulator.waitForModifierRelease()
 
         let guardBox = ClipboardGuard()
@@ -112,41 +125,69 @@ enum TextReplace {
 
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(text, forType: .string)
+        // Plain-text fields read `.string`; rich editors prefer RTF or HTML.
+        if let rtf = rich?.rtf { NSPasteboard.general.setData(rtf, forType: .rtf) }
+        if let html = rich?.html { NSPasteboard.general.setString(html, forType: .html) }
         // nspasteboard.org convention: clipboard-history apps skip transient
         // items, so the temporary paste is not recorded.
         NSPasteboard.general.setData(Data(), forType: ClipboardGuard.transientType)
 
         KeySimulator.simulateCommandV()
 
-        // Electron and busy web views often need longer than a key-repeat to
+        // Electron and busy web views can take well over a key-repeat to
         // service the paste. Restoring too soon yanks the replacement off the
-        // pasteboard before the host reads it.
-        try? await Task.sleep(for: .milliseconds(400))
+        // pasteboard before the host reads it; restoring late costs nothing.
+        try? await Task.sleep(for: .milliseconds(clipboardRestoreDelayMS))
         guardBox.restore()
     }
 
-    /// Brings the write-back target forward so a simulated Cmd-V reaches it.
+    static let clipboardRestoreDelayMS = 800
+
+    /// The app a simulated Cmd-V has to reach.
     ///
     /// The AX element is the precise route, but it is nil whenever the text
-    /// came from the composer rather than a host selection. `bundleID` is the
-    /// fallback: the app Enhancify was invoked over, remembered at capture time.
-    /// Without one of the two, Cmd-V had no destination and Replace did
-    /// nothing visible.
+    /// came from the composer rather than a host selection, and in Electron
+    /// apps it belongs to a helper process (Cursor Helper, Slack Helper) that
+    /// cannot be activated — Cmd-V then went nowhere and Replace looked dead.
+    /// `bundleID`, the app Enhancify was invoked over, covers both.
     @MainActor
-    private static func activateHost(owning element: AXUIElement?, bundleID: String? = nil) {
-        let app: NSRunningApplication? = {
-            if let element {
-                var pid: pid_t = 0
-                if AXUIElementGetPid(element, &pid) == .success,
-                   let running = NSRunningApplication(processIdentifier: pid) {
-                    return running
-                }
+    private static func hostApplication(owning element: AXUIElement?, bundleID: String?) -> NSRunningApplication? {
+        var candidates: [NSRunningApplication] = []
+        if let element {
+            var pid: pid_t = 0
+            if AXUIElementGetPid(element, &pid) == .success,
+               let running = NSRunningApplication(processIdentifier: pid) {
+                candidates.append(running)
             }
-            guard let bundleID else { return nil }
-            return NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first
-        }()
-        guard let app,
-              app.bundleIdentifier != Bundle.main.bundleIdentifier else { return }
-        app.activate()
+        }
+        if let bundleID {
+            candidates += NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
+        }
+        return candidates.first { app in
+            app.bundleIdentifier != Bundle.main.bundleIdentifier
+                && app.activationPolicy == .regular
+                && !app.isTerminated
+        }
+    }
+
+    /// Activates `app` and waits until it is frontmost, so Cmd-V lands in its
+    /// focused field rather than in the panel that is still fading out.
+    /// Activation is asynchronous, and since macOS 14 it is cooperative: the
+    /// current app yields first or the request can be ignored.
+    @MainActor
+    private static func bringToFront(_ app: NSRunningApplication) async {
+        if !app.isActive {
+            NSApp.yieldActivation(to: app)
+            app.activate()
+        }
+        let deadline = ContinuousClock.now + .milliseconds(600)
+        while !app.isActive, ContinuousClock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+        // The window server hands keyboard focus back a beat after activation.
+        try? await Task.sleep(for: .milliseconds(80))
+        if !app.isActive {
+            logger.notice("host did not become active before paste")
+        }
     }
 }

@@ -71,6 +71,9 @@ final class PanelEngine {
     /// The app the panel was invoked over, carried to the clipboard fallback
     /// so Replace can reactivate it when there is no captured AX element.
     var pendingReplaceHostBundleID: String?
+    /// The result rebuilt with the selection's headings and lists, when the
+    /// host supplied them and the result still lines up with the source.
+    var pendingReplaceRich: RichReplacement.Payload?
 
     /// Called when a new panel session begins, so attempt numbering restarts.
     func resetForNewInvocation() {
@@ -85,6 +88,7 @@ final class PanelEngine {
         pendingReplaceText = nil
         pendingReplaceTarget = nil
         pendingReplaceHostBundleID = nil
+        pendingReplaceRich = nil
     }
 
     func beginGeneration(for actionID: String) -> Int {

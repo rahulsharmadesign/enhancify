@@ -169,16 +169,33 @@ final class OutputQualityTests: XCTestCase {
 
     // MARK: - Unchanged
 
-    func testEnhanceUnchangedStillPublishes() {
+    func testEnhanceEchoRetriesOnceThenPublishes() {
         let source = "write a poem about the sea"
-        let decision = evaluate(
+        let retry = evaluate(
             actionID: EnhancementAction.enhanceID,
             raw: source,
             source: source,
             canRetry: true
         )
+        XCTAssertEqual(retry.outcome, .retry(previousResult: nil, hint: OutputQuality.echoHint))
+        let spent = evaluate(
+            actionID: EnhancementAction.enhanceID,
+            raw: source,
+            source: source,
+            canRetry: false
+        )
+        XCTAssertEqual(spent.outcome, .publish)
+        XCTAssertEqual(spent.text, source)
+    }
+
+    func testEnhanceThatOnlyFixedCapitalsIsNotAnEcho() {
+        let decision = evaluate(
+            actionID: EnhancementAction.enhanceID,
+            raw: "Write a poem about the sea.",
+            source: "write a poem about the sea",
+            canRetry: true
+        )
         XCTAssertEqual(decision.outcome, .publish)
-        XCTAssertEqual(decision.text, source)
     }
 
     func testGrammarUnchangedStillPublishes() {

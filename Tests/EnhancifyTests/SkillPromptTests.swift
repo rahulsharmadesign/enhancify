@@ -63,7 +63,7 @@ final class BuiltInPromptScopeTests: XCTestCase {
 
     func testEveryPromptKeepsPointsAsPoints() {
         XCTAssertTrue(Prompts.enhance.contains("Never merge points into a paragraph"))
-        XCTAssertTrue(Prompts.enhanceOnDevice.contains("Never merge points into a paragraph"))
+        XCTAssertTrue(Prompts.enhanceOnDevice.contains("Never merge them into a paragraph"))
         XCTAssertTrue(Prompts.grammar.contains("never join lines into one paragraph"))
         XCTAssertTrue(Prompts.grammarOnDevice.contains("text on separate lines stays on separate lines"))
         for style in GrammarStyle.allCases where style.isRewrite {
@@ -150,7 +150,9 @@ final class DocumentFramingTests: XCTestCase {
 final class OnDevicePromptTests: XCTestCase {
     func testOnDevicePromptsAreShortAndSelfDescribing() {
         for prompt in [Prompts.grammarOnDevice, Prompts.enhanceOnDevice] {
-            XCTAssertLessThan(prompt.count, 1200, "the on-device prompt must stay short")
+            // ~400 tokens of a 4K context: room for two short examples (one of
+            // them a list, which the base model otherwise merges) and the input.
+            XCTAssertLessThan(prompt.count, 1600, "the on-device prompt must stay short")
             XCTAssertTrue(prompt.contains(Prompts.textOpenTag), "must describe its own markers — nothing composes framing onto it")
             // The anti-obey rule, in whichever wording the prompt carries it.
             XCTAssertTrue(

@@ -51,7 +51,7 @@ final class SettingsStoreTests: XCTestCase {
 
     func testRemainingDefaults() {
         let store = SettingsStore(defaults: defaults)
-        XCTAssertEqual(store.primaryColorID, PrimaryColor.indigo.rawValue)
+        XCTAssertEqual(store.primaryColorID, PrimaryColor.violet.rawValue)
         XCTAssertEqual(store.lastTargetID, TargetProfile.genericID)
         XCTAssertFalse(store.launchAtLogin)
         XCTAssertFalse(store.hasCompletedGetStarted)

@@ -8,7 +8,7 @@ extension PanelView {
     var primaryFooterTitle: String { "Replace" }
 
     /// Short hover pill for the primary footer action.
-    var primaryFooterHoverHelp: String { "Replace selection" }
+    var primaryFooterHoverHelp: String { "Replace selection (Return)" }
 
     var isPromptBusy: Bool {
         switch appState.resultState(for: appState.selectedActionID) {
@@ -31,6 +31,21 @@ extension PanelView {
             ) {}
         }
         .accessibilityHint("Send the instruction to Enhancify")
+    }
+
+    /// Return in the composer. The text view holds the keyboard even while
+    /// the composer is collapsed, so this is where Return lands with a result
+    /// on screen: it has to apply the same rules as the panel, or an empty
+    /// composer swallows the key and Replace never happens.
+    func handleComposerReturn() {
+        let flags = NSApp.currentEvent?.modifierFlags ?? []
+        perform(
+            PanelKeyBinding.resolveReturn(
+                modifiers: PanelKeyModifiers(flags: flags),
+                canSubmit: canSubmitDescribe,
+                hasAcceptableResult: appState.acceptedText() != nil
+            )
+        )
     }
 
     func submitIfReady() {

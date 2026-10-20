@@ -1,3 +1,5 @@
+<p align="center"><img src="Logo/Enhancify-AppIcon.png" width="128" alt="Enhancify icon"></p>
+
 # Enhancify
 
 Select text anywhere on your Mac, press a shortcut, and get a better version back, in place.

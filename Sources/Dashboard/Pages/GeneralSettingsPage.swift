@@ -18,7 +18,7 @@ struct GeneralSettingsTab: View {
             ) {
                 SettingsAccentSwatches(
                     selection: Binding(
-                        get: { PrimaryColor(rawValue: settings.primaryColorID) ?? .indigo },
+                        get: { PrimaryColor(rawValue: settings.primaryColorID) ?? .violet },
                         set: { settings.primaryColorID = $0.rawValue }
                     )
                 )

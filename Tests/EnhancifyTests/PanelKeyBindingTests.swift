@@ -9,23 +9,22 @@ final class PanelKeyBindingTests: XCTestCase {
 
     // MARK: - The regression these tests exist for
 
-    func testBareReturnNeverReplacesWhenComposerIsEmpty() {
-        // Previously: fell through to `performReplace()`.
+    func testBareReturnReplacesWhenComposerIsEmptyAndAResultIsReady() {
         let intent = PanelKeyBinding.resolveReturn(
             modifiers: .none,
             canSubmit: false,
             hasAcceptableResult: true
         )
-        XCTAssertEqual(intent, .pass, "A bare Return must never trigger a destructive replace.")
+        XCTAssertEqual(intent, .replace, "Return applies the finished result, like ⌘↩.")
     }
 
-    func testBareReturnDoesNotReplaceEvenWithNothingElseToDo() {
+    func testBareReturnDoesNothingWithoutAResult() {
         let intent = PanelKeyBinding.resolveReturn(
             modifiers: .none,
             canSubmit: false,
             hasAcceptableResult: false
         )
-        XCTAssertEqual(intent, .pass)
+        XCTAssertEqual(intent, .pass, "Still streaming or nothing to apply.")
     }
 
     // MARK: - Return
@@ -140,24 +139,22 @@ final class PanelKeyBindingTests: XCTestCase {
         XCTAssertEqual(PanelKeyBinding.resolveEscape(), .cancel)
     }
 
-    // MARK: - No unmodified key is destructive
+    // MARK: - Only Return and ⌘↩ replace
 
-    func testNoUnmodifiedKeyResolvesToReplace() {
-        // Guards the whole class of bug rather than one instance of it.
-        for canSubmit in [true, false] {
-            for hasResult in [true, false] {
-                let intent = PanelKeyBinding.resolveReturn(
-                    modifiers: .none,
-                    canSubmit: canSubmit,
-                    hasAcceptableResult: hasResult
-                )
-                XCTAssertNotEqual(
-                    intent, .replace,
-                    "Return without ⌘ resolved to .replace (canSubmit: \(canSubmit), hasResult: \(hasResult))"
-                )
-            }
+    func testTypedTextIsNeverOverwrittenByBareReturn() {
+        // With a refinement typed, Return sends it; it must not paste the
+        // current result over the host's text instead.
+        for hasResult in [true, false] {
+            let intent = PanelKeyBinding.resolveReturn(
+                modifiers: .none,
+                canSubmit: true,
+                hasAcceptableResult: hasResult
+            )
+            XCTAssertEqual(intent, .submit)
         }
+    }
 
+    func testNoUnmodifiedCharacterResolvesToReplace() {
         let characters: [Character] = ["c", "1", "5", "9", "q", "0"]
         for character in characters {
             let intent = PanelKeyBinding.resolveCharacter(character, modifiers: .none, tabCount: 5)

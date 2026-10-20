@@ -35,7 +35,9 @@ extension AppCoordinator {
 
     /// Whether to read the selection with a real Cmd-C before trying the
     /// Accessibility API. Electron / Chromium AI tools keep a lazily updated
-    /// AX tree, so `kAXSelectedText` there can be an earlier selection.
+    /// AX tree, so `kAXSelectedText` there can be an earlier selection. Rich
+    /// text apps and browsers only hand over headings, lists, and paragraph
+    /// styles on the pasteboard, which Replace needs to keep them.
     static func prefersClipboardCapture(host: HostApp.Info?, element: AXUIElement?) -> Bool {
         let electron = element.map { TextReplace.isElectronHelper($0) } ?? false
         return prefersClipboardCapture(host: host, isElectronHelper: electron)
@@ -45,8 +47,19 @@ extension AppCoordinator {
     nonisolated static func prefersClipboardCapture(host: HostApp.Info?, isElectronHelper: Bool) -> Bool {
         if isElectronHelper { return true }
         guard let host else { return false }
+        let bundleID = host.bundleID.lowercased()
+        if richTextBundleIDs.contains(where: { bundleID.hasPrefix($0) }) { return true }
         return TargetProfile.seededID(forBundleID: host.bundleID, name: host.name) != nil
     }
+
+    /// Apps whose selections carry formatting worth keeping.
+    nonisolated static let richTextBundleIDs: [String] = [
+        "com.apple.notes", "com.apple.textedit", "com.apple.iwork.", "com.apple.mail",
+        "com.microsoft.word", "com.microsoft.outlook", "com.microsoft.onenote",
+        "notion.id", "md.obsidian",
+        "com.apple.safari", "com.google.chrome", "company.thebrowser.browser",
+        "com.microsoft.edgemac", "com.brave.browser", "org.mozilla.firefox"
+    ]
 
     private static let communicationBundlePrefixes: [String] = [
         "com.apple.mail", "com.apple.mobilesms", "com.tinyspeck",

@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import SwiftUI
 
@@ -6,10 +7,9 @@ import SwiftUI
 /// Kept free of SwiftUI so the decision table is unit-testable without a host
 /// view. `PanelView` owns the side effects; this type only decides.
 ///
-/// The rule that matters: **a bare Return never replaces text.** Replace is
-/// destructive — it overwrites the user's selection in whatever app they were
-/// in — so it requires the explicit ⌘↩ modifier. Return on its own submits when
-/// there is something to submit, and otherwise does nothing.
+/// Return: typed text in the composer is sent as a refinement; with nothing
+/// typed and a finished result on screen, Return replaces the selection, as
+/// ⌘↩ always does. Nothing else replaces.
 enum PanelKeyIntent: Equatable {
     /// Overwrite the host app's selection with the accepted result.
     case replace
@@ -43,6 +43,12 @@ extension PanelKeyModifiers {
     init(press: KeyPress) {
         self.init(command: press.modifiers.contains(.command))
     }
+
+    /// The composer's text view sees Return before SwiftUI does, so it reads
+    /// the modifiers off the AppKit event.
+    init(flags: NSEvent.ModifierFlags) {
+        self.init(command: flags.contains(.command))
+    }
 }
 
 enum PanelKeyBinding {
@@ -61,13 +67,14 @@ enum PanelKeyBinding {
             // Explicit destructive intent. Still requires something to apply.
             return hasAcceptableResult ? .replace : .pass
         }
+        // Typed text is a refinement, so Return sends it rather than writing
+        // the current result into the host.
         if canSubmit {
             return .submit
         }
-        // Deliberately NOT `.replace`. A bare Return with an empty composer used
-        // to overwrite the user's selection, which is unrecoverable and was
-        // never asked for.
-        return .pass
+        // Nothing typed: Return applies the finished result, like ⌘↩. While
+        // a result is still streaming there is nothing to apply, so it passes.
+        return hasAcceptableResult ? .replace : .pass
     }
 
     /// Resolves a character press. Returns `.pass` for anything unclaimed.

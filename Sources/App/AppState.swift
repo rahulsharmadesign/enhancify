@@ -27,6 +27,9 @@ final class AppState {
     /// this element, not whatever is focused at replace time (our own panel
     /// holds key status by then).
     var capturedElement: AXUIElement?
+    /// The selection's formatting (headings, lists, paragraph styles) when
+    /// the host supplied it. Replace rebuilds the result with it.
+    var capturedRich: RichSelection?
     /// Enhance or Grammar. Results are keyed by action id.
     var selectedActionID: String = EnhancementAction.enhanceID
     var results: [String: ResultState] = [:]
@@ -106,6 +109,7 @@ final class AppState {
         results.removeAll()
         reloadingActions.removeAll()
         capturedElement = nil
+        capturedRich = nil
         describeInstruction = ""
         replacedFeedback = nil
         truncationNotice = false
