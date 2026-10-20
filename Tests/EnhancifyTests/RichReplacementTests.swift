@@ -52,7 +52,16 @@ final class RichReplacementTests: XCTestCase {
         )
         let rebuilt = try XCTUnwrap(NSAttributedString(rtf: try XCTUnwrap(payload.rtf), documentAttributes: nil))
         XCTAssertTrue(rebuilt.string.hasPrefix("Next steps\n"))
-        XCTAssertTrue(rebuilt.string.contains("\t•\tSend the deck."))
+        // Still a real list item in the host, carrying exactly one marker.
+        let item = try XCTUnwrap(rebuilt.string.range(of: "Send the deck."))
+        let itemStyle = rebuilt.attribute(
+            .paragraphStyle,
+            at: rebuilt.string.distance(from: rebuilt.string.startIndex, to: item.lowerBound),
+            effectiveRange: nil
+        ) as? NSParagraphStyle
+        XCTAssertFalse(itemStyle?.textLists.isEmpty ?? true)
+        XCTAssertEqual(rebuilt.string.components(separatedBy: "•").count - 1, 2, "one marker per item")
+        XCTAssertFalse(rebuilt.string.contains("- Send"))
         let headingFont = try XCTUnwrap(rebuilt.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)
         XCTAssertEqual(headingFont.pointSize, 24)
     }
