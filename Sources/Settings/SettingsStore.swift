@@ -121,7 +121,7 @@ final class SettingsStore {
         customEnhanceModel = enhanceModel
         customGrammarModel = grammarModel
         launchAtLogin = defaults.bool(forKey: Keys.launchAtLogin)
-        primaryColorID = defaults.string(forKey: PrimaryColor.storageKey) ?? PrimaryColor.indigo.rawValue
+        primaryColorID = defaults.string(forKey: PrimaryColor.storageKey) ?? PrimaryColor.violet.rawValue
         lastTargetID = defaults.string(forKey: Keys.lastTargetID) ?? TargetProfile.genericID
         lastTargetByApp = defaults.dictionary(forKey: Keys.lastTargetByApp) as? [String: String] ?? [:]
         hasCompletedGetStarted = defaults.bool(forKey: Keys.hasCompletedGetStarted)

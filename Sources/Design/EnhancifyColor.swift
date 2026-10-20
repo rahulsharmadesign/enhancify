@@ -198,7 +198,7 @@ enum EnhancifyColor {
 
     @MainActor
     static var accent: Color {
-        (PrimaryColor(rawValue: SettingsStore.shared.primaryColorID) ?? .indigo).color
+        (PrimaryColor(rawValue: SettingsStore.shared.primaryColorID) ?? .violet).color
     }
     /// AppKit surfaces that cannot read the store on the main actor, such as a
     /// window's own background.
@@ -207,7 +207,7 @@ enum EnhancifyColor {
     /// than assuming indigo, so a lighter accent can pair with dark glyphs.
     @MainActor
     static var onAccent: Color {
-        (PrimaryColor(rawValue: SettingsStore.shared.primaryColorID) ?? .indigo).selectedForeground
+        (PrimaryColor(rawValue: SettingsStore.shared.primaryColorID) ?? .violet).selectedForeground
     }
 
     // MARK: - States

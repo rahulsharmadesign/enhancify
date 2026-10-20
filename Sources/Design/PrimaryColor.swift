@@ -4,7 +4,7 @@ import SwiftUI
 /// The twelve app-wide accent choices. Values are explicit sRGB so a future
 /// Windows client can reproduce them exactly.
 enum PrimaryColor: String, CaseIterable, Identifiable {
-    case indigo, violet, blue, cyan, teal, emerald, green, lime, amber, orange, coral, rose
+    case violet, indigo, blue, cyan, teal, emerald, green, lime, amber, orange, coral, rose
 
     static let storageKey = "primaryColorID"
     var id: String { rawValue }
@@ -29,7 +29,8 @@ enum PrimaryColor: String, CaseIterable, Identifiable {
     var color: Color {
         switch self {
         case .indigo: return Color(red: 0.420, green: 0.380, blue: 0.980)
-        case .violet: return Color(red: 0.600, green: 0.400, blue: 0.980)
+        // The Enhancify brand purple (#7131E9), and the default accent.
+        case .violet: return Color(red: 0.443, green: 0.192, blue: 0.914)
         case .blue: return Color(red: 0.090, green: 0.395, blue: 0.945)
         case .cyan: return Color(red: 0.015, green: 0.520, blue: 0.680)
         case .teal: return Color(red: 0.015, green: 0.480, blue: 0.470)
@@ -52,6 +53,6 @@ enum PrimaryColor: String, CaseIterable, Identifiable {
 
     static var selected: PrimaryColor {
         let stored = UserDefaults.standard.string(forKey: storageKey)
-        return stored.flatMap(PrimaryColor.init(rawValue:)) ?? .indigo
+        return stored.flatMap(PrimaryColor.init(rawValue:)) ?? .violet
     }
 }
