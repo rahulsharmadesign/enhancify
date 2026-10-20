@@ -62,13 +62,15 @@ extension AppCoordinator {
             let targetElement = TextCapture.focusedElement()
             let host = HostApp.identify(from: targetElement)
             let result = await TextCapture.captureSelection()
-            let text: String
-            switch result {
-            case .text(let captured): text = captured
-            case .empty: text = ""
+            var text = ""
+            var rich: RichSelection?
+            if case .text(let captured, let formatting) = result {
+                text = captured
+                rich = formatting
             }
             presentPanel(
                 with: text,
+                rich: rich,
                 targetElement: targetElement,
                 host: host,
                 waitsForInput: true

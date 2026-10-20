@@ -86,7 +86,11 @@ final class InvokeActionTests: XCTestCase {
     func testAIToolsReadTheSelectionWithCommandCFirst() {
         XCTAssertTrue(AppCoordinator.prefersClipboardCapture(host: cursor, isElectronHelper: false))
         XCTAssertTrue(AppCoordinator.prefersClipboardCapture(host: nil, isElectronHelper: true))
-        XCTAssertFalse(AppCoordinator.prefersClipboardCapture(host: mail, isElectronHelper: false))
+        XCTAssertTrue(
+            AppCoordinator.prefersClipboardCapture(host: mail, isElectronHelper: false),
+            "rich-text apps hand over formatting only on the pasteboard"
+        )
+        XCTAssertFalse(AppCoordinator.prefersClipboardCapture(host: slack, isElectronHelper: false))
         XCTAssertFalse(AppCoordinator.prefersClipboardCapture(host: nil, isElectronHelper: false))
     }
 

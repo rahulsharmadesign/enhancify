@@ -16,6 +16,10 @@ enum OutputQuality {
     Your previous output merged the author's points into running text. The source is written as a list: keep it as a list, one point per line, with the same markers (`-`, `*`, `1.`), order, and number of points. Improve and correct the words inside each point only.
     """
 
+    static let echoHint = """
+    Your previous output repeated the text unchanged. Rewrite it as a clear, direct prompt for another AI, with correct spelling, grammar, punctuation, and capitalization. Keep every point and its line.
+    """
+
     enum Outcome: Equatable {
         case publish
         case retry(previousResult: String?, hint: String?)
@@ -39,6 +43,12 @@ enum OutputQuality {
     ) -> Decision {
         if actionID == EnhancementAction.grammarID, !isRewriteStyle {
             return evaluateGrammar(raw: raw, source: source, canRetry: canRetry)
+        }
+        // A byte-identical echo means the model did nothing, not even fix a
+        // capital: small on-device models do this. One nudge, then publish.
+        if actionID == EnhancementAction.enhanceID, canRetry,
+           raw.trimmingCharacters(in: .whitespacesAndNewlines) == source.trimmingCharacters(in: .whitespacesAndNewlines) {
+            return Decision(outcome: .retry(previousResult: nil, hint: echoHint), text: raw)
         }
         return evaluateListShape(raw: raw, source: source, canRetry: canRetry)
     }

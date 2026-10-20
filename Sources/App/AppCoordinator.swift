@@ -138,10 +138,11 @@ final class AppCoordinator {
             let preferClipboard = Self.prefersClipboardCapture(host: host, element: targetElement)
             let result = await TextCapture.captureSelection(preferClipboard: preferClipboard)
             switch result {
-            case .text(let text):
+            case .text(let text, let rich):
                 logger.notice("captured text, length = \(text.count)")
                 presentPanel(
                     with: text,
+                    rich: rich,
                     targetElement: targetElement,
                     host: host,
                     isEditableField: isEditableField
@@ -169,6 +170,7 @@ final class AppCoordinator {
     /// read an instruction first, so nothing runs until asked.
     func presentPanel(
         with rawText: String,
+        rich: RichSelection? = nil,
         targetElement: AXUIElement? = nil,
         host: HostApp.Info? = nil,
         source: String? = nil,
@@ -182,6 +184,8 @@ final class AppCoordinator {
         logger.notice("presenting panel at anchor = \(anchor.debugDescription)")
         appState.reset(withCapturedText: text)
         appState.capturedElement = targetElement
+        // A truncated capture no longer matches its formatting line for line.
+        appState.capturedRich = wasTruncated ? nil : rich
         appState.hostBundleID = host?.bundleID
         appState.hostAppName = host?.name
         appState.selectedTargetID = TargetRegistry.resolveTargetID(

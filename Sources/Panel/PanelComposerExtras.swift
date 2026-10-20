@@ -19,7 +19,9 @@ extension PanelView {
     var footerHint: String? {
         let other = appState.selectedActionID == EnhancementAction.grammarID ? "Enhance" : "Grammar"
         if composerCollapsed {
-            return "Type to refine · Tab switches to \(other)"
+            return appState.acceptedText() != nil
+                ? "Return replaces · Type to refine · Tab: \(other)"
+                : "Type to refine · Tab switches to \(other)"
         }
         if idleIsCompact && showsIdlePlaceholderOnly {
             return "Return runs · Tab switches to \(other)"

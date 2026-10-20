@@ -9,13 +9,14 @@ extension PanelEngine {
         pendingReplaceText = text
         pendingReplaceTarget = appState.capturedElement
         pendingReplaceHostBundleID = appState.hostBundleID
+        pendingReplaceRich = appState.capturedRich.flatMap { RichReplacement.payload(for: text, source: $0) }
         appState.replacedFeedback = OutcomeCopy.replaceToast(hostAppName: appState.hostAppName)
         replaceToastTask?.cancel()
         replaceToastTask = Task { [weak self] in
             do {
                 // Short confirmation only: the panel dismisses when the toast
                 // clears, so it must not hold the write.
-                try await Task.sleep(for: .milliseconds(800))
+                try await Task.sleep(for: .milliseconds(350))
             } catch {
                 return
             }
@@ -28,9 +29,11 @@ extension PanelEngine {
         let text = pendingReplaceText
         let target = pendingReplaceTarget
         let hostBundleID = pendingReplaceHostBundleID
+        let rich = pendingReplaceRich
         pendingReplaceText = nil
         pendingReplaceTarget = nil
         pendingReplaceHostBundleID = nil
+        pendingReplaceRich = nil
         replaceToastTask = nil
         appState.replacedFeedback = nil
         guard let text else { return }
@@ -38,7 +41,7 @@ extension PanelEngine {
         // hide() fades then orders out. Cmd-V before that lands on the
         // panel's field editor. Wait until the window is gone, then paste.
         try? await Task.sleep(for: .milliseconds(180))
-        await TextReplace.replaceSelection(with: text, target: target, hostBundleID: hostBundleID)
+        await TextReplace.replaceSelection(with: text, target: target, hostBundleID: hostBundleID, rich: rich)
     }
 
     func copy(text: String) {

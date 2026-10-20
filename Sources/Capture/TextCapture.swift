@@ -5,7 +5,10 @@ import os.log
 private let logger = Logger(subsystem: "com.rahul.enhancify", category: "capture")
 
 enum CaptureResult {
-    case text(String)
+    /// `rich` is the selection's formatting when the host put it on the
+    /// pasteboard (a Cmd-C capture). Replace uses it to give each line back
+    /// its heading level, list marker, and paragraph style.
+    case text(String, rich: RichSelection? = nil)
     case empty
 }
 
@@ -21,9 +24,9 @@ enum TextCapture {
     /// Cmd-C always reflects what is selected now.
     static func captureSelection(preferClipboard: Bool = false) async -> CaptureResult {
         if preferClipboard, AXIsProcessTrusted(),
-           let clipboardText = await captureViaClipboard(), !clipboardText.isEmpty {
-            logger.notice("captured via clipboard (preferred for this host), length = \(clipboardText.count)")
-            return .text(clipboardText)
+           let copied = await captureViaClipboard(), !copied.text.isEmpty {
+            logger.notice("captured via clipboard (preferred for this host), length = \(copied.text.count), rich = \(copied.rich != nil)")
+            return .text(copied.text, rich: copied.rich)
         }
         if let axText = focusedSelectedText(), !axText.isEmpty {
             logger.notice("captured via AX, length = \(axText.count)")
@@ -35,9 +38,9 @@ enum TextCapture {
         }
         logger.notice("AX capture empty/unavailable, trying clipboard fallback")
 
-        if let clipboardText = await captureViaClipboard(), !clipboardText.isEmpty {
-            logger.notice("captured via clipboard fallback, length = \(clipboardText.count)")
-            return .text(clipboardText)
+        if let copied = await captureViaClipboard(), !copied.text.isEmpty {
+            logger.notice("captured via clipboard fallback, length = \(copied.text.count), rich = \(copied.rich != nil)")
+            return .text(copied.text, rich: copied.rich)
         }
 
         logger.notice("clipboard fallback also empty")
@@ -84,7 +87,7 @@ enum TextCapture {
         return text
     }
 
-    private static func captureViaClipboard() async -> String? {
+    private static func captureViaClipboard() async -> (text: String, rich: RichSelection?)? {
         // Wait for the user to release the hotkey's modifiers first, or the
         // simulated Cmd-C reaches the app as Ctrl-Option-Cmd-C and does nothing.
         await KeySimulator.waitForModifierRelease()
@@ -109,7 +112,8 @@ enum TextCapture {
             logger.notice("clipboard holds an editor's empty-selection line copy; ignoring")
             return nil
         }
-        return NSPasteboard.general.string(forType: .string)
+        guard let text = NSPasteboard.general.string(forType: .string) else { return nil }
+        return (text, RichSelection(pasteboard: NSPasteboard.general))
     }
 
     static var vsCodeEditorDataType: NSPasteboard.PasteboardType { .init("vscode-editor-data") }
